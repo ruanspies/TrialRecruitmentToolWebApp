@@ -6,24 +6,28 @@
         <v-slider v-model.number="confidenceLevel" label="Confidence Level" :min="1" :max="99" :step="1" thumb-label class="mt-4">
           <template v-slot:append><v-text-field v-model="confidenceLevel" density="compact" style="width: 70px" type="number" hide-details single-line></v-text-field><span class="ml-2">%</span></template>
         </v-slider>
-        <v-btn @click="runMultiSiteSimulation" color="primary" class="mt-4" block :loading="isLoading">Run Simulation</v-btn>
       </v-card-text></v-card></v-col>
       <v-col cols="12" md="8"><v-card><v-card-title>Output</v-card-title><v-card-text><v-row>
-        <v-col cols="12" sm="4"><v-alert border="start" variant="tonal" color="teal" icon="mdi-account-group"><template v-slot:title><div class="text-h6">{{ totalRecruitmentGoal }} participants</div></template>Total specified recruitment goal</v-alert></v-col>
-        <v-col cols="12" sm="4"><v-alert border="start" variant="tonal" color="light-blue" icon="mdi-map-marker-radius"><template v-slot:title><div class="text-h6">{{ determinativeSiteInfo }}</div></template>Determinative site</v-alert></v-col>
-        <v-col cols="12" sm="4"><v-alert border="start" variant="tonal" color="purple" icon="mdi-clock-outline"><template v-slot:title><div class="text-h6">{{ overallDuration }}</div></template>Estimated recruitment duration</v-alert></v-col>
+        <v-col cols="12" sm="4"><v-fade-transition><v-alert border="start" variant="tonal" color="success" icon="mdi-account-group"><template v-slot:title><div class="text-h6">{{ totalRecruitmentGoal }} participants</div></template>Total specified recruitment goal</v-alert></v-fade-transition></v-col>
+        <v-col cols="12" sm="4"><v-fade-transition><v-alert border="start" variant="tonal" color="info" icon="mdi-map-marker-radius"><template v-slot:title><div class="text-h6">{{ simulationResults.determinativeSiteInfo }}</div></template>Determinative site</v-alert></v-fade-transition></v-col>
+        <v-col cols="12" sm="4"><v-fade-transition><v-alert border="start" variant="tonal" color="primary" icon="mdi-clock-outline"><template v-slot:title><div class="text-h6">{{ simulationResults.overallDuration }}</div></template>Estimated recruitment duration</v-alert></v-fade-transition></v-col>
       </v-row></v-card-text></v-card></v-col>
     </v-row>
-    <v-row><v-col cols="12"><v-card><v-card-title>Site Details</v-card-title><v-data-table :headers="headers" :items="sites" class="elevation-1" density="compact">
+    <v-row><v-col cols="12"><v-card><v-card-title>Site Details</v-card-title><v-data-table :headers="headers" :items="sites" class="elevation-1" density="compact" :loading="isLoading">
       <template v-slot:item.recruitRate="{ item }"><v-text-field v-model.number="item.recruitRate" type="number" hide-details density="compact"></v-text-field></template>
       <template v-slot:item.RecruitGoal="{ item }"><v-text-field v-model.number="item.RecruitGoal" type="number" hide-details density="compact"></v-text-field></template>
       <template v-slot:item.StartDelay="{ item }"><v-text-field v-model.number="item.StartDelay" type="number" hide-details density="compact"></v-text-field></template>
     </v-data-table></v-card></v-col></v-row>
-    <v-row><v-col cols="12"><v-card><v-card-title>Gantt Chart</v-card-title><v-card-text><div id="gantt-chart"></div></v-card-text></v-card></v-col></v-row>
+    <v-row><v-col cols="12"><v-card><v-card-title>Gantt Chart</v-card-title><v-card-text>
+      <v-fade-transition>
+        <div v-show="!isLoading" id="gantt-chart"></div>
+      </v-fade-transition>
+      <v-skeleton-loader v-if="isLoading" type="image"></v-skeleton-loader>
+    </v-card-text></v-card></v-col></v-row>
   </v-container>
 </template>
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
 import { runSimulation, calc_CI, SimulationParams } from '../services/simulation';
 import Plotly from 'plotly.js-dist-min';
 interface Site extends SimulationParams { SiteNo: number; StartDelay: number; }
@@ -32,8 +36,7 @@ const siteQty = ref(10);
 const confidenceLevel = ref(95);
 const sites = ref<Site[]>([]);
 const isLoading = ref(false);
-const overallDuration = ref('N/A');
-const determinativeSiteInfo = ref('N/A');
+const simulationResults = ref({ overallDuration: 'N/A', determinativeSiteInfo: 'N/A' });
 const headers = [ { title: 'Site No.', key: 'SiteNo', sortable: false }, { title: 'Recruitment Rate (per week)', key: 'recruitRate', sortable: false }, { title: 'Recruitment Goal', key: 'RecruitGoal', sortable: false }, { title: 'Start Delay (weeks)', key: 'StartDelay', sortable: false }, ];
 const totalRecruitmentGoal = computed(() => sites.value.reduce((sum, site) => sum + (site.RecruitGoal || 0), 0));
 watch(siteQty, (newQty) => {
@@ -50,7 +53,7 @@ const drawGanttChart = (results: SiteResult[]) => {
   const layout: Partial<Plotly.Layout> = { title: 'Site Recruitment Timelines', xaxis: { title: 'Duration (Weeks)' }, yaxis: { title: 'Site Number', autorange: 'reversed' }, barmode: 'stack', showlegend: false, height: sites.value.length * 55 };
   Plotly.newPlot('gantt-chart', traces, layout);
 };
-const runMultiSiteSimulation = async () => {
+watch([sites, confidenceLevel], async () => {
   isLoading.value = true;
   const siteResults: SiteResult[] = await Promise.all(sites.value.map(async (site) => {
     const simVector = runSimulation(site);
@@ -69,14 +72,19 @@ const runMultiSiteSimulation = async () => {
   if (determinativeSite) {
     const lower = (determinativeSite.lowerCI + determinativeSite.StartDelay).toFixed(1);
     const upper = (determinativeSite.upperCI + determinativeSite.StartDelay).toFixed(1);
-    overallDuration.value = `${lower} - ${upper} weeks`;
-    determinativeSiteInfo.value = `Site ${determinativeSite.SiteNo}`;
+    simulationResults.value = {
+      overallDuration: `${lower} - ${upper} weeks`,
+      determinativeSiteInfo: `Site ${determinativeSite.SiteNo}`
+    };
   } else {
-    overallDuration.value = 'N/A';
-    determinativeSiteInfo.value = 'N/A';
+    simulationResults.value = {
+      overallDuration: 'N/A',
+      determinativeSiteInfo: 'N/A'
+    };
   }
+  await nextTick();
   drawGanttChart(siteResults);
   isLoading.value = false;
-};
+}, { deep: true });
 </script>
 <style scoped>.v-alert { height: 100%; }</style>

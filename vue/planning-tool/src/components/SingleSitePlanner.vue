@@ -9,9 +9,9 @@
         </v-slider>
       </v-card-text></v-card></v-col>
       <v-col cols="12" md="9"><v-card><v-card-title>Output</v-card-title><v-card-text><v-row>
-        <v-col cols="12" sm="4"><v-alert border="start" variant="tonal" color="teal" icon="mdi-account-group"><template v-slot:title><div class="text-h6">{{ recruitmentGoal }} participants</div></template>Total specified recruitment goal</v-alert></v-col>
-        <v-col cols="12" sm="4"><v-alert border="start" variant="tonal" color="light-blue" icon="mdi-chart-line"><template v-slot:title><div class="text-h6">{{ recruitmentRate }}</div></template>Expected number of weekly recruitments</v-alert></v-col>
-        <v-col cols="12" sm="4"><v-alert border="start" variant="tonal" color="purple" icon="mdi-clock-outline"><template v-slot:title><div class="text-h6">{{ simulationResult.duration }}</div></template>Estimated recruitment duration</v-alert></v-col>
+        <v-col cols="12" sm="4"><v-fade-transition><v-alert border="start" variant="tonal" color="success" icon="mdi-account-group"><template v-slot:title><div class="text-h6">{{ recruitmentGoal }} participants</div></template>Total specified recruitment goal</v-alert></v-fade-transition></v-col>
+        <v-col cols="12" sm="4"><v-fade-transition><v-alert border="start" variant="tonal" color="info" icon="mdi-chart-line"><template v-slot:title><div class="text-h6">{{ recruitmentRate }}</div></template>Expected number of weekly recruitments</v-alert></v-fade-transition></v-col>
+        <v-col cols="12" sm="4"><v-fade-transition><v-alert border="start" variant="tonal" color="primary" icon="mdi-clock-outline"><template v-slot:title><div class="text-h6">{{ simulationResult.duration }}</div></template>Estimated recruitment duration</v-alert></v-fade-transition></v-col>
       </v-row></v-card-text></v-card></v-col>
     </v-row>
   </v-container>
